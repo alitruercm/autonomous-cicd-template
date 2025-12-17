@@ -1,17 +1,21 @@
 # Compliance Framework
 
-This directory contains compliance control mappings for SOC-2 and ISO 27001 audits.
+This directory contains compliance control mappings for SOC-2, ISO 27001, HIPAA, and HITRUST audits.
 
 ## Overview
 
 The compliance framework maps CI/CD and AI governance controls to regulatory requirements:
 
-| Framework | File | Report |
-|-----------|------|--------|
+| Framework | Directory/File | Report |
+|-----------|----------------|--------|
 | SOC-2 Type I | `SOC2_MAPPING.yaml` | `reports/SOC2_Control_Matrix.md` |
 | SOC-2 Type II | `SOC2_TYPE2_CONTROLS.yaml` | `reports/SOC2_TypeII_Evidence_Report.md` |
 | ISO 27001 | `ISO27001_MAPPING.yaml` | `reports/ISO27001_Control_Matrix.md` |
 | ISO Risk Register | `ISO_RISK_REGISTER.yaml` | `reports/ISO_Risk_Register_Report.md` |
+| HIPAA | `HIPAA/` | `reports/HIPAA_Compliance_Report.md` |
+| HITRUST CSF | `HITRUST/` | `reports/HITRUST_Readiness_Report.md` |
+| Security Questionnaires | `QUESTIONNAIRES/` | Generated on demand |
+| Compliance Score | `COMPLIANCE_SCORE.yaml` | `reports/compliance_score.json` |
 | Audit Q&A | `CONTROL_EVIDENCE.yaml` | Generated on demand |
 
 ## Files
@@ -222,6 +226,172 @@ The exported evidence package includes:
 | A.8.31 | Environment separation | Implemented |
 | A.8.32 | Change management | Implemented |
 | A.16.1 | Incident management | Implemented |
+
+## HIPAA Compliance
+
+Healthcare-specific compliance for systems that may process ePHI.
+
+### HIPAA Files
+
+| File | Description |
+|------|-------------|
+| `HIPAA/HIPAA_SAFEGUARDS.yaml` | Administrative, Physical, Technical safeguards mapping |
+| `HIPAA/HIPAA_RISK_ASSESSMENT.yaml` | HIPAA-specific risk assessment |
+| `HIPAA/HIPAA_EVIDENCE.yaml` | Evidence collection log |
+
+### HIPAA Report Generation
+
+```bash
+# Quick status
+python scripts/generate_hipaa_report.py --status
+
+# Detailed report
+python scripts/generate_hipaa_report.py --detailed
+
+# Validate safeguards mapping
+python scripts/generate_hipaa_report.py --validate
+
+# Output to file
+python scripts/generate_hipaa_report.py --output reports/hipaa_report.md
+```
+
+### HIPAA Coverage
+
+| Safeguard Type | Implemented | Not Applicable |
+|----------------|-------------|----------------|
+| Administrative (164.308) | 8 | 0 |
+| Physical (164.310) | 1 | 3 |
+| Technical (164.312) | 5 | 0 |
+
+---
+
+## HITRUST CSF Compliance
+
+HITRUST Common Security Framework alignment for healthcare and high-security environments.
+
+### HITRUST Files
+
+| File | Description |
+|------|-------------|
+| `HITRUST/HITRUST_CSFS_MAPPING.yaml` | CSF control mapping to CI/CD |
+| `HITRUST/HITRUST_MATURITY.yaml` | Maturity assessment by domain |
+| `HITRUST/HITRUST_EVIDENCE.yaml` | Evidence collection log |
+
+### HITRUST Report Generation
+
+```bash
+# Quick status
+python scripts/generate_hitrust_report.py --status
+
+# Maturity assessment
+python scripts/generate_hitrust_report.py --maturity
+
+# Detailed report
+python scripts/generate_hitrust_report.py --detailed
+
+# Validate CSF mapping
+python scripts/generate_hitrust_report.py --validate
+
+# Output to file
+python scripts/generate_hitrust_report.py --output reports/hitrust_report.md
+```
+
+### HITRUST Certification Readiness
+
+| Certification | Status | Gaps |
+|---------------|--------|------|
+| HITRUST e1 | Ready | 0 |
+| HITRUST i1 | Near Ready | 3 |
+| HITRUST r2 | Ready | 2 |
+
+---
+
+## Security Questionnaires
+
+Pre-written answers for common security questionnaires.
+
+### Available Questionnaires
+
+| Questionnaire | File | Questions |
+|---------------|------|-----------|
+| SIG (Standardized Information Gathering) | `QUESTIONNAIRES/SIG.yaml` | 12 |
+| CAIQ (CSA Consensus Assessment) | `QUESTIONNAIRES/CAIQ.yaml` | 18 |
+
+### Questionnaire Usage
+
+```bash
+# List available questionnaires
+python scripts/generate_questionnaire_answers.py --list
+
+# Generate all SIG answers
+python scripts/generate_questionnaire_answers.py --questionnaire SIG
+
+# Generate CAIQ answers for specific category
+python scripts/generate_questionnaire_answers.py --questionnaire CAIQ --category "AI Governance"
+
+# Export to markdown
+python scripts/generate_questionnaire_answers.py --questionnaire SIG --output sig_answers.md
+
+# Search across all questionnaires
+python scripts/generate_questionnaire_answers.py --search "risk management"
+```
+
+---
+
+## Compliance Score Engine
+
+Continuous compliance health scoring (0-100).
+
+### Score Components
+
+| Component | Weight | Source |
+|-----------|--------|--------|
+| SOC-2 Controls | 25% | SOC2_MAPPING.yaml |
+| ISO 27001 Controls | 20% | ISO27001_MAPPING.yaml |
+| Risk Management | 20% | ISO_RISK_REGISTER.yaml |
+| Evidence Collection | 15% | SOC2_EVIDENCE_LOG.yaml |
+| CI/CD Compliance | 10% | Workflow file checks |
+| Questionnaire Readiness | 10% | QUESTIONNAIRES/*.yaml |
+
+### Compliance Score Usage
+
+```bash
+# Calculate and display score
+python scripts/compliance_score_engine.py
+
+# Detailed breakdown
+python scripts/compliance_score_engine.py --verbose
+
+# JSON output
+python scripts/compliance_score_engine.py --json
+
+# Save report
+python scripts/compliance_score_engine.py --output reports/compliance_score.json
+
+# Generate SVG badge
+python scripts/compliance_score_engine.py --badge reports/compliance_badge.svg
+```
+
+---
+
+## Auditor Packet Generation
+
+Generate auditor-ready artifacts for SOC-2 Type II audits.
+
+```bash
+# Generate all artifacts
+python scripts/generate_auditor_packet.py
+
+# Custom output directory
+python scripts/generate_auditor_packet.py --output-dir reports/auditor
+
+# Outputs:
+# - SOC2_TypeII_Evidence.xlsx (Excel evidence table)
+# - SOC2_TypeII_Auditor_Packet.pdf (PDF narrative)
+# - SOC2_TypeII_Summary.md (Markdown summary)
+```
+
+---
 
 ## Questions?
 
