@@ -11,16 +11,22 @@ Safety mechanisms:
 - Rules enforced via .ai/CLAUDE_RULES.md
 - Patch validation before apply
 - Fail-open on AI errors
+
+Notifications:
+- Posts status to PR comments
+- Sends Slack notifications
 """
 
 import subprocess
 import sys
 from pathlib import Path
 
-# Add scripts directory to path for ai_engine import
+# Add scripts directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 from ai_engine import ask_ai
+from pr_commenter import post_pr_comment
+from slack_notifier import notify_slack
 
 MAX_COMMITS_PER_PR = 2
 COMMIT_MARKER = "[ai-self-heal]"
@@ -138,12 +144,31 @@ def commit_changes() -> None:
     run(["git", "commit", "-m", f"{COMMIT_MARKER} Fix CI/rule violations"])
 
 
+def pr_summary(status: str, details: str) -> str:
+    """Generate a formatted PR comment."""
+    return f"""
+### Self-Healing PR Agent Report
+
+**Status:** {status}
+
+**Details:**
+{details}
+
+---
+> This agent only fixes low-risk CI and rule violations.
+> Human review is still required before merge.
+"""
+
+
 def main() -> None:
     """Run the self-healing agent."""
     print("Self-Healing Agent started")
 
     if already_healed():
-        print("[STOP] Max self-heal attempts reached. Human review required.")
+        msg = "Maximum self-heal attempts reached. Manual review required."
+        post_pr_comment(pr_summary("Stopped", msg))
+        notify_slack("Self-Heal Stopped", msg, "#ffcc00")
+        print(f"[STOP] {msg}")
         sys.exit(0)
 
     diff = get_failures()
@@ -156,30 +181,41 @@ def main() -> None:
         response = generate_fix(diff)
         patch = extract_patch(response)
     except Exception as e:
-        print(f"[WARNING] AI analysis failed: {e}")
-        print("Falling back to human review.")
+        msg = f"AI analysis failed: {e}\nFalling back to human review."
+        post_pr_comment(pr_summary("Failed", msg))
+        notify_slack("Self-Heal Failed", msg, "#ff0000")
+        print(f"[WARNING] {msg}")
         sys.exit(0)
 
     if "diff --git" not in patch:
-        print("[WARNING] AI did not return a valid patch.")
-        print("Falling back to human review.")
+        msg = "AI could not generate a valid fix. Manual intervention required."
+        post_pr_comment(pr_summary("Failed", msg))
+        notify_slack("Self-Heal Failed", msg, "#ff0000")
+        print(f"[WARNING] {msg}")
         sys.exit(0)
 
     print("Applying patch...")
     success, error = apply_patch(patch)
     if not success:
-        print("[ERROR] Patch failed to apply:")
-        print(error)
-        print("Falling back to human review.")
+        msg = f"Patch failed to apply:\n```\n{error}\n```"
+        post_pr_comment(pr_summary("Failed", msg))
+        notify_slack("Self-Heal Failed", f"Patch failed: {error}", "#ff0000")
+        print(f"[ERROR] {msg}")
         sys.exit(0)
 
     print("Committing changes...")
     try:
         commit_changes()
         run(["git", "push"])
-        print("[OK] Self-healing commit pushed successfully.")
+        msg = "CI/rule violations were automatically fixed and committed."
+        post_pr_comment(pr_summary("Success", msg))
+        notify_slack("Self-Heal Successful", msg, "#36a64f")
+        print(f"[OK] {msg}")
     except Exception as e:
-        print(f"[ERROR] Failed to push: {e}")
+        msg = f"Failed to push changes: {e}"
+        post_pr_comment(pr_summary("Failed", msg))
+        notify_slack("Self-Heal Failed", msg, "#ff0000")
+        print(f"[ERROR] {msg}")
         sys.exit(1)
 
 
