@@ -136,8 +136,11 @@ temp/
 reports/*.pdf
 reports/*.txt
 SOC2_Evidence_Package*.zip
+Compliance_Evidence_Package*.zip
 AI_ROI_Report.pdf
 AI_ROI_Report.txt
+audit_answers.md
+audit_answers.txt
 
 # Governance compliance reports
 governance-controller/compliance_report.md
