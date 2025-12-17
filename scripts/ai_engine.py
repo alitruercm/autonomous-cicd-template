@@ -11,7 +11,9 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
+
+import httpx
 
 
 class AIProvider(Enum):
@@ -51,6 +53,8 @@ class BaseAIProvider(ABC):
 class GroqProvider(BaseAIProvider):
     """Groq AI provider implementation (DEFAULT)."""
 
+    API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
     def __init__(self) -> None:
         self.api_key = os.getenv("GROQ_API_KEY")
         self.model = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
@@ -60,12 +64,33 @@ class GroqProvider(BaseAIProvider):
         if not self.is_available():
             raise RuntimeError("Groq provider not configured")
 
-        # Implementation would go here
-        # from groq import Groq
-        # client = Groq(api_key=self.api_key)
-        # response = client.chat.completions.create(...)
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
-        raise NotImplementedError("Implement Groq API call")
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": kwargs.get("temperature", 0.1),
+            "max_tokens": kwargs.get("max_tokens", 2048),
+        }
+
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(self.API_URL, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+
+        content = data["choices"][0]["message"]["content"]
+        tokens_used = data.get("usage", {}).get("total_tokens", 0)
+
+        return AIResponse(
+            content=content,
+            model=self.model,
+            provider=AIProvider.GROQ,
+            tokens_used=tokens_used,
+            metadata=data,
+        )
 
     def is_available(self) -> bool:
         """Check if Groq is configured."""
@@ -124,7 +149,7 @@ class AIEngine:
         AIProvider.OPENAI,
     ]
 
-    def __init__(self, provider: Optional[AIProvider] = None) -> None:
+    def __init__(self, provider: AIProvider | None = None) -> None:
         self._providers: dict[AIProvider, BaseAIProvider] = {
             AIProvider.GROQ: GroqProvider(),
             AIProvider.OPENAI: OpenAIProvider(),
@@ -168,7 +193,23 @@ class AIEngine:
         self._active_provider = provider
 
 
-# Module-level convenience function
-def get_engine(provider: Optional[AIProvider] = None) -> AIEngine:
+# Module-level convenience functions
+def get_engine(provider: AIProvider | None = None) -> AIEngine:
     """Get an AI engine instance."""
     return AIEngine(provider=provider)
+
+
+def ask_ai(prompt: str, **kwargs: Any) -> str:
+    """
+    Convenience function to get AI response as a string.
+
+    Args:
+        prompt: The prompt to send to the AI.
+        **kwargs: Additional arguments passed to the provider.
+
+    Returns:
+        The AI response content as a string.
+    """
+    engine = get_engine()
+    response = engine.complete(prompt, **kwargs)
+    return response.content

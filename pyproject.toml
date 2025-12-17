@@ -38,6 +38,8 @@ include = ["src*", "scripts*"]
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -53,8 +55,9 @@ ignore = [
     "S101",  # assert usage (allowed in tests)
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
+"scripts/ai_rules_audit.py" = ["S603", "S607"]  # subprocess with hardcoded args is safe
 
 # ===========================================
 # Black Configuration

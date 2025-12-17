@@ -43,6 +43,32 @@ jobs:
           claude_args: "--max-turns 10"
 
   # ============================================
+  # AI RULES SEMANTIC AUDIT (FAIL-CLOSED on violation)
+  # ============================================
+  ai-rules-audit:
+    name: "📜 AI Rules Audit"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: pip install httpx
+
+      - name: AI Rules Audit
+        env:
+          AI_PROVIDER: groq
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python scripts/ai_rules_audit.py
+
+  # ============================================
   # AI SECURITY REVIEW (FAIL-OPEN)
   # ============================================
   ai-security:
