@@ -8,8 +8,10 @@ The compliance framework maps CI/CD and AI governance controls to regulatory req
 
 | Framework | File | Report |
 |-----------|------|--------|
-| SOC-2 | `SOC2_MAPPING.yaml` | `reports/SOC2_Control_Matrix.md` |
+| SOC-2 Type I | `SOC2_MAPPING.yaml` | `reports/SOC2_Control_Matrix.md` |
+| SOC-2 Type II | `SOC2_TYPE2_CONTROLS.yaml` | `reports/SOC2_TypeII_Evidence_Report.md` |
 | ISO 27001 | `ISO27001_MAPPING.yaml` | `reports/ISO27001_Control_Matrix.md` |
+| ISO Risk Register | `ISO_RISK_REGISTER.yaml` | `reports/ISO_Risk_Register_Report.md` |
 | Audit Q&A | `CONTROL_EVIDENCE.yaml` | Generated on demand |
 
 ## Files
@@ -31,6 +33,27 @@ Maps controls to ISO 27001:2022 Annex A:
 ### CONTROL_EVIDENCE.yaml
 
 Pre-written answers to common audit questions with evidence references.
+
+### SOC2_TYPE2_CONTROLS.yaml
+
+SOC-2 Type II configuration for proving controls operated **over time**:
+- Evidence collection settings
+- Control frequencies
+- Audit thresholds
+
+### SOC2_EVIDENCE_LOG.yaml
+
+Living evidence log that grows automatically:
+- Timestamps of control operations
+- References to PRs, commits, incidents
+- Actor and details tracking
+
+### ISO_RISK_REGISTER.yaml
+
+Living ISO 27001 risk register:
+- Risk identification and scoring
+- Control mappings
+- Treatment status (Mitigated/Accepted/Open)
 
 ## Usage
 
@@ -68,6 +91,54 @@ python scripts/export_compliance_evidence.py --list
 
 - SOC-2: `reports/SOC2_Control_Matrix.md`
 - ISO 27001: `reports/ISO27001_Control_Matrix.md`
+
+### SOC-2 Type II Evidence Collection
+
+```bash
+# Record evidence (called from CI/CD)
+python scripts/collect_type2_evidence.py \
+  --control CC6.6 \
+  --event "PR merged" \
+  --repo myrepo \
+  --ref "PR #123"
+
+# Generate evidence report
+python scripts/collect_type2_evidence.py --report
+
+# Show statistics
+python scripts/collect_type2_evidence.py --stats
+```
+
+### ISO Risk Register Management
+
+```bash
+# Validate risk register
+python scripts/update_risk_register.py --validate
+
+# Check overdue reviews
+python scripts/update_risk_register.py --check-reviews
+
+# Generate report
+python scripts/update_risk_register.py --report
+
+# Update a risk status
+python scripts/update_risk_register.py --update R-001 --status Mitigated
+
+# Show summary
+python scripts/update_risk_register.py --summary
+```
+
+### Customer Trust Portal
+
+```bash
+# Generate trust portal data
+python scripts/generate_trust_portal_data.py
+
+# Serve locally
+cd trust-portal && python -m http.server 8000
+```
+
+Host via GitHub Pages, Vercel, or internal portal.
 
 ## Evidence Package Contents
 
