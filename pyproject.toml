@@ -61,6 +61,7 @@ ignore = [
 "scripts/pr_self_heal.py" = ["S603", "S607"]  # subprocess with hardcoded git commands is safe
 "scripts/slack_notifier.py" = ["S310"]  # urlopen with validated webhook URL is safe
 "scripts/pr_commenter.py" = ["S310"]  # urlopen with GitHub API URL is safe
+"governance-controller/controller.py" = ["S310"]  # urlopen with GitHub/Slack API URLs is safe
 
 # ===========================================
 # Black Configuration

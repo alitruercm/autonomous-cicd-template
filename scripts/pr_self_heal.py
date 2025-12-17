@@ -25,6 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from ai_engine import ask_ai
+from ai_metrics import record
 from pr_commenter import post_pr_comment
 from slack_notifier import notify_slack
 
@@ -160,14 +161,26 @@ def pr_summary(status: str, details: str) -> str:
 """
 
 
+def get_pr_number() -> str:
+    """Get PR number from environment."""
+    import os
+    return os.getenv("PR_NUMBER", "")
+
+
 def main() -> None:
     """Run the self-healing agent."""
     print("Self-Healing Agent started")
+    pr_number = get_pr_number()
 
     if already_healed():
         msg = "Maximum self-heal attempts reached. Manual review required."
         post_pr_comment(pr_summary("Stopped", msg))
         notify_slack("Self-Heal Stopped", msg, "#ffcc00")
+        record(
+            event="self_heal_stopped",
+            details="Max attempts reached",
+            pr_number=pr_number,
+        )
         print(f"[STOP] {msg}")
         sys.exit(0)
 
@@ -184,6 +197,11 @@ def main() -> None:
         msg = f"AI analysis failed: {e}\nFalling back to human review."
         post_pr_comment(pr_summary("Failed", msg))
         notify_slack("Self-Heal Failed", msg, "#ff0000")
+        record(
+            event="self_heal_failed",
+            details=f"AI analysis failed: {e}",
+            pr_number=pr_number,
+        )
         print(f"[WARNING] {msg}")
         sys.exit(0)
 
@@ -191,6 +209,11 @@ def main() -> None:
         msg = "AI could not generate a valid fix. Manual intervention required."
         post_pr_comment(pr_summary("Failed", msg))
         notify_slack("Self-Heal Failed", msg, "#ff0000")
+        record(
+            event="self_heal_failed",
+            details="No valid patch generated",
+            pr_number=pr_number,
+        )
         print(f"[WARNING] {msg}")
         sys.exit(0)
 
@@ -200,6 +223,11 @@ def main() -> None:
         msg = f"Patch failed to apply:\n```\n{error}\n```"
         post_pr_comment(pr_summary("Failed", msg))
         notify_slack("Self-Heal Failed", f"Patch failed: {error}", "#ff0000")
+        record(
+            event="self_heal_failed",
+            details=f"Patch failed: {error}",
+            pr_number=pr_number,
+        )
         print(f"[ERROR] {msg}")
         sys.exit(0)
 
@@ -210,11 +238,21 @@ def main() -> None:
         msg = "CI/rule violations were automatically fixed and committed."
         post_pr_comment(pr_summary("Success", msg))
         notify_slack("Self-Heal Successful", msg, "#36a64f")
+        record(
+            event="self_heal_success",
+            details="Auto-fixed CI/rule violations",
+            pr_number=pr_number,
+        )
         print(f"[OK] {msg}")
     except Exception as e:
         msg = f"Failed to push changes: {e}"
         post_pr_comment(pr_summary("Failed", msg))
         notify_slack("Self-Heal Failed", msg, "#ff0000")
+        record(
+            event="self_heal_failed",
+            details=f"Push failed: {e}",
+            pr_number=pr_number,
+        )
         print(f"[ERROR] {msg}")
         sys.exit(1)
 

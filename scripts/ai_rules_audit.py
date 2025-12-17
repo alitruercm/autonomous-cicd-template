@@ -26,6 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from ai_engine import ask_ai
+from ai_metrics import record
 
 # Output file for risk assessment (consumed by other workflows)
 RISK_OUTPUT_FILE = "/tmp/ai_risk_assessment.json"
@@ -172,10 +173,34 @@ Git diff:
         # Apply risk label
         apply_risk_label(risk_level)
 
+        # Record metrics
+        pr_number = os.getenv("PR_NUMBER", "")
+        record(
+            event="risk_classified",
+            details=result.get("explanation", ""),
+            pr_number=pr_number,
+            risk_level=risk_level,
+        )
+
         # Check for violation
         if violation:
+            record(
+                event="rule_violation_detected",
+                details=result.get("explanation", ""),
+                pr_number=pr_number,
+                risk_level=risk_level,
+            )
             print("\n[ERROR] AI RULE VIOLATION DETECTED")
             sys.exit(1)
+
+        # Record auto-merge eligibility
+        if safe_for_auto_merge:
+            record(
+                event="auto_merge_enabled",
+                details="LOW risk PR eligible for auto-merge",
+                pr_number=pr_number,
+                risk_level=risk_level,
+            )
 
         print(f"\n[OK] Risk level: {risk_level}")
         print(f"[OK] Safe for auto-merge: {safe_for_auto_merge}")

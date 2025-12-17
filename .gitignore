@@ -128,4 +128,16 @@ temp/
 # ===========================================
 # Project Specific
 # ===========================================
-# Add project-specific ignores below
+
+# AI Metrics Database (local SQLite)
+.ai/ai_metrics.db
+
+# Generated reports
+reports/*.pdf
+reports/*.txt
+SOC2_Evidence_Package*.zip
+AI_ROI_Report.pdf
+AI_ROI_Report.txt
+
+# Governance compliance reports
+governance-controller/compliance_report.md
