@@ -1,15 +1,23 @@
 """
 AI Rules Semantic Auditor.
 
-Uses AI to analyze git diffs for rule violations.
+Uses AI to analyze git diffs for rule violations and risk classification.
 Detects weakening of CI/CD gates, security downgrades,
 and AI provider abstraction violations.
 
 Behavior:
 - AI detects rule violations -> PR blocked (exit 1)
 - AI call fails -> PR allowed (exit 0, fail-open)
+
+Risk Classification:
+- LOW: Formatting, lint, docs, comments (safe for auto-merge)
+- MEDIUM: Minor logic changes, test updates
+- HIGH: Business logic, API changes
+- CRITICAL: Security, infrastructure, CI/CD changes
 """
 
+import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -18,6 +26,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from ai_engine import ask_ai
+
+# Output file for risk assessment (consumed by other workflows)
+RISK_OUTPUT_FILE = "/tmp/ai_risk_assessment.json"
 
 
 def get_diff() -> str:
@@ -39,12 +50,47 @@ def get_diff() -> str:
             return ""
 
 
+def write_risk_output(data: dict) -> None:
+    """Write risk assessment to file for other workflows."""
+    try:
+        with open(RISK_OUTPUT_FILE, "w") as f:
+            json.dump(data, f)
+        # Also set GitHub output if available
+        github_output = os.getenv("GITHUB_OUTPUT")
+        if github_output:
+            with open(github_output, "a") as f:
+                f.write(f"risk_level={data.get('risk_level', 'UNKNOWN')}\n")
+                f.write(f"safe_for_auto_merge={data.get('safe_for_auto_merge', False)}\n")
+    except Exception as e:
+        print(f"[WARNING] Could not write risk output: {e}")
+
+
+def apply_risk_label(risk_level: str) -> None:
+    """Apply risk label to PR via GitHub CLI."""
+    pr_number = os.getenv("PR_NUMBER")
+    if not pr_number:
+        print("[WARNING] PR_NUMBER not set, skipping label.")
+        return
+
+    label = f"risk:{risk_level}"
+    try:
+        subprocess.run(
+            ["gh", "pr", "edit", pr_number, "--add-label", label],
+            check=True,
+            capture_output=True,
+        )
+        print(f"[OK] Applied label: {label}")
+    except Exception as e:
+        print(f"[WARNING] Could not apply label: {e}")
+
+
 def main() -> None:
     """Run AI semantic audit on git diff."""
     diff = get_diff()
 
     if not diff.strip():
         print("[OK] No changes to audit.")
+        write_risk_output({"risk_level": "NONE", "safe_for_auto_merge": False})
         sys.exit(0)
 
     # Truncate diff if too large (token limits)
@@ -57,20 +103,34 @@ You are an AI governance auditor.
 
 Repository rules are defined in .ai/CLAUDE_RULES.md.
 
-Analyze the following git diff and answer:
-1. Does this change violate ANY rule?
-2. Are CI/CD gates weakened?
-3. Are security checks removed or downgraded?
-4. Is AI provider abstraction violated?
-5. Is coverage enforcement reduced?
+Analyze the following git diff and:
+1. Check for rule violations
+2. Classify the risk level
 
-Respond STRICTLY in JSON with:
+Risk Classification (STRICT):
+- LOW: ONLY formatting, lint fixes, docs, comments, whitespace
+- MEDIUM: Minor logic changes, test updates, non-critical refactoring
+- HIGH: Business logic, API changes, new features
+- CRITICAL: Security, infrastructure, CI/CD, authentication, database
+
+LOW means:
+- No business logic change
+- No security impact
+- No infra or CI/CD weakening
+- Pure cosmetic / formatting / documentation
+
+Respond STRICTLY in JSON:
 {{
   "violation": true|false,
-  "severity": "critical|high|medium|low|none",
-  "explanation": "...",
-  "recommendation": "..."
+  "risk_level": "LOW|MEDIUM|HIGH|CRITICAL",
+  "explanation": "Brief explanation of the changes",
+  "safe_for_auto_merge": true|false
 }}
+
+IMPORTANT: safe_for_auto_merge should ONLY be true if:
+- risk_level is "LOW"
+- violation is false
+- Changes are purely cosmetic/formatting/docs
 
 Git diff:
 {diff}
@@ -80,19 +140,56 @@ Git diff:
         response = ask_ai(prompt)
         print(response)
 
-        # Check for violation in response
-        response_lower = response.lower()
-        if '"violation": true' in response_lower or '"violation":true' in response_lower:
+        # Parse JSON response
+        try:
+            # Extract JSON from response
+            json_start = response.find("{")
+            json_end = response.rfind("}") + 1
+            if json_start >= 0 and json_end > json_start:
+                result = json.loads(response[json_start:json_end])
+            else:
+                result = {}
+        except json.JSONDecodeError:
+            result = {}
+
+        # Extract values with safe defaults
+        violation = result.get("violation", False)
+        risk_level = result.get("risk_level", "HIGH")  # Default to HIGH if uncertain
+        safe_for_auto_merge = result.get("safe_for_auto_merge", False)
+
+        # Safety override: Never auto-merge if violation or high risk
+        if violation or risk_level in ("MEDIUM", "HIGH", "CRITICAL"):
+            safe_for_auto_merge = False
+
+        # Write output for other workflows
+        write_risk_output({
+            "violation": violation,
+            "risk_level": risk_level,
+            "safe_for_auto_merge": safe_for_auto_merge,
+            "explanation": result.get("explanation", ""),
+        })
+
+        # Apply risk label
+        apply_risk_label(risk_level)
+
+        # Check for violation
+        if violation:
             print("\n[ERROR] AI RULE VIOLATION DETECTED")
             sys.exit(1)
 
-        print("\n[OK] No rule violations detected.")
+        print(f"\n[OK] Risk level: {risk_level}")
+        print(f"[OK] Safe for auto-merge: {safe_for_auto_merge}")
         sys.exit(0)
 
     except Exception as e:
         # Fail-open: AI failures don't block PR
         print("[WARNING] AI audit failed, falling back to human review.")
         print(f"Error: {e}")
+        write_risk_output({
+            "risk_level": "UNKNOWN",
+            "safe_for_auto_merge": False,
+            "error": str(e),
+        })
         sys.exit(0)
 
 
