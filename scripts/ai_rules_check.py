@@ -23,7 +23,7 @@ MANDATORY_PHRASES = [
 def main() -> None:
     """Validate AI rules file exists and contains required concepts."""
     if not RULES_FILE.exists():
-        print("❌ ERROR: .ai/CLAUDE_RULES.md is missing.")
+        print("[ERROR] .ai/CLAUDE_RULES.md is missing.")
         sys.exit(1)
 
     content = RULES_FILE.read_text(encoding="utf-8")
@@ -31,12 +31,12 @@ def main() -> None:
     missing = [p for p in MANDATORY_PHRASES if p.lower() not in content.lower()]
 
     if missing:
-        print("❌ ERROR: CLAUDE_RULES.md is missing required concepts:")
+        print("[ERROR] CLAUDE_RULES.md is missing required concepts:")
         for m in missing:
             print(f"  - {m}")
         sys.exit(1)
 
-    print("✅ AI rules file present and validated.")
+    print("[OK] AI rules file present and validated.")
     sys.exit(0)
 
 
