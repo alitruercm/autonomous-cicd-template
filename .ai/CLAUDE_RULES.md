@@ -111,6 +111,42 @@ When generating code:
 
 ---
 
+## 11. n8n Integration Setup
+
+**IMPORTANT: On first session in a new project cloned from this template:**
+
+If the project uses n8n workflows and the user hasn't configured n8n access yet:
+
+1. **Check for n8n configuration** in `.env`:
+   - Look for `N8N_API_KEY` - if missing or set to placeholder, prompt setup
+
+2. **Guide user through setup**:
+   ```
+   To enable n8n workflow access:
+   1. Open your n8n instance (e.g., http://localhost:5678)
+   2. Go to Settings → API → Create API Key
+   3. Add to .env file:
+      N8N_BASE_URL=http://localhost:5678
+      N8N_API_KEY=<your-api-key>
+
+   For multiple environments, also add:
+      N8N_PROD_URL=https://your-prod-n8n.com
+      N8N_PROD_API_KEY=<prod-key>
+   ```
+
+3. **Available n8n CLI commands** (after setup):
+   ```bash
+   node scripts/n8n-cli.js envs           # List configured environments
+   node scripts/n8n-cli.js workflows      # List all workflows
+   node scripts/n8n-cli.js -e prod active # List active workflows in prod
+   node scripts/n8n-cli.js execution 123  # Debug execution
+   node scripts/n8n-cli.js errors 123     # Find errors
+   ```
+
+4. **Documentation**: See `docs/N8N_CLAUDE_CODE_INTEGRATION.md` for full guide
+
+---
+
 ## Acknowledgment
 
 By continuing work in this repository, Claude Code agrees to follow these rules without exception. Any deviation requires explicit user approval documented in the conversation.
