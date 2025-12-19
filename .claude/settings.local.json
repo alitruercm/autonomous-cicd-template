@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)",
+      "Bash(n8n:*)",
+      "Bash(git:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)",
+      "Bash(echo:*)",
+      "Bash(cd:*)",
+      "Bash(pwd:*)",
+      "Bash(sqlite3:*)",
+      "Bash(python:*)",
+      "Bash(pip:*)",
+      "Bash(make:*)",
+      "Bash(docker:*)",
+      "Read",
+      "Write",
+      "Edit",
+      "WebFetch",
+      "Glob",
+      "Grep"
+    ]
+  }
+}
